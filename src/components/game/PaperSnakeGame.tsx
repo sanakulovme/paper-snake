@@ -201,6 +201,69 @@ export const PaperSnakeGame = ({ playerName, onGameOver }: PaperSnakeGameProps) 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // === HANDLE TOUCH/SWIPE INPUT ===
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const SWIPE_THRESHOLD = 30; // Minimum swipe distance
+
+    const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!gameStateRef.current || gameStateRef.current.isGameOver) return;
+      e.preventDefault();
+
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+
+      // Only register swipe if it exceeds threshold
+      if (Math.abs(deltaX) < SWIPE_THRESHOLD && Math.abs(deltaY) < SWIPE_THRESHOLD) {
+        return;
+      }
+
+      const state = gameStateRef.current;
+      let newDir: Direction | null = null;
+
+      // Determine swipe direction (favor the axis with larger movement)
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
+        if (deltaX > 0 && state.direction !== "LEFT") {
+          newDir = "RIGHT";
+        } else if (deltaX < 0 && state.direction !== "RIGHT") {
+          newDir = "LEFT";
+        }
+      } else {
+        // Vertical swipe
+        if (deltaY > 0 && state.direction !== "UP") {
+          newDir = "DOWN";
+        } else if (deltaY < 0 && state.direction !== "DOWN") {
+          newDir = "UP";
+        }
+      }
+
+      if (newDir) {
+        state.nextDirection = newDir;
+      }
+    };
+
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
+
+    return () => {
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [dimensions]);
+
   // === HANDLE RESIZE ===
   useEffect(() => {
     const updateDimensions = () => {
